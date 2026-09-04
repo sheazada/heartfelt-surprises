@@ -14,7 +14,124 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      birthday_pages: {
+        Row: {
+          age: number | null
+          birthday_date: string | null
+          created_at: string
+          id: string
+          intro_message: string
+          letter: string
+          music_enabled: boolean
+          music_track: string | null
+          recipient_name: string
+          relationship: string | null
+          sender_name: string
+          theme: string
+        }
+        Insert: {
+          age?: number | null
+          birthday_date?: string | null
+          created_at?: string
+          id?: string
+          intro_message: string
+          letter: string
+          music_enabled?: boolean
+          music_track?: string | null
+          recipient_name: string
+          relationship?: string | null
+          sender_name: string
+          theme?: string
+        }
+        Update: {
+          age?: number | null
+          birthday_date?: string | null
+          created_at?: string
+          id?: string
+          intro_message?: string
+          letter?: string
+          music_enabled?: boolean
+          music_track?: string | null
+          recipient_name?: string
+          relationship?: string | null
+          sender_name?: string
+          theme?: string
+        }
+        Relationships: []
+      }
+      birthday_photos: {
+        Row: {
+          birthday_page_id: string
+          caption: string | null
+          created_at: string
+          display_order: number
+          id: string
+          memory: string | null
+          public_url: string
+          storage_path: string
+        }
+        Insert: {
+          birthday_page_id: string
+          caption?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          memory?: string | null
+          public_url: string
+          storage_path: string
+        }
+        Update: {
+          birthday_page_id?: string
+          caption?: string | null
+          created_at?: string
+          display_order?: number
+          id?: string
+          memory?: string | null
+          public_url?: string
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "birthday_photos_birthday_page_id_fkey"
+            columns: ["birthday_page_id"]
+            isOneToOne: false
+            referencedRelation: "birthday_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      birthday_reasons: {
+        Row: {
+          birthday_page_id: string
+          created_at: string
+          display_order: number
+          id: string
+          text: string
+        }
+        Insert: {
+          birthday_page_id: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          text: string
+        }
+        Update: {
+          birthday_page_id?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "birthday_reasons_birthday_page_id_fkey"
+            columns: ["birthday_page_id"]
+            isOneToOne: false
+            referencedRelation: "birthday_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
