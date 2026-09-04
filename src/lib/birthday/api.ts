@@ -106,7 +106,7 @@ export async function createBirthdayPage(
   }
 
   for (let index = 0; index < draft.photos.length; index++) {
-    const photo = draft.photos[index];
+    const photo = draft.photos[index]!;
     onProgress({
       step: `Uploading photo ${index + 1} of ${draft.photos.length}…`,
       current: index + 1,
