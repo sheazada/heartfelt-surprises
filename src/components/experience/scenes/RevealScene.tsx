@@ -25,7 +25,7 @@ export function RevealScene({
               animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
               transition={{ duration: 0.9, delay: 0.25 + i * 0.22, ease: [0.22, 1, 0.36, 1] }}
               className="mr-[0.3em] inline-block"
-              style={i === words.length - 1 ? { color: "var(--scene-accent)" } : undefined}
+              style={{ color: i === words.length - 1 ? "var(--scene-accent)" : "inherit" }}
             >
               {word}
             </motion.span>
