@@ -47,7 +47,7 @@ function CreatePage() {
   const navigate = useNavigate();
   const [draft, setDraft] = useState<BirthdayDraft>(() => emptyDraft());
   const [step, setStep] = useState(0);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Partial<Record<"recipientName" | "senderName" | "introMessage" | "age" | "reasons" | "letter", string>>>({});
   const [previewing, setPreviewing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState("");
@@ -63,7 +63,7 @@ function CreatePage() {
   useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.previewUrl)), []);
 
   const validate = (s: number) => {
-    const e: Record<string, string> = {};
+    const e: Partial<Record<"recipientName" | "senderName" | "introMessage" | "age" | "reasons" | "letter", string>> = {};
     if (s === 0) {
       if (!draft.recipientName.trim()) e.recipientName = "Who is this surprise for?";
       if (!draft.senderName.trim()) e.senderName = "Let them know who it's from.";
