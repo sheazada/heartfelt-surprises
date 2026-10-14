@@ -118,6 +118,17 @@ export function CakeScene({ name, onNext }: { name: string; onNext: () => void }
   const blow = (index: number) =>
     setLit((prev) => prev.map((value, i) => (i === index ? false : value)));
 
+  // Blow out the first still-lit candle (used by microphone detection).
+  const blowNext = useCallback(() => {
+    setLit((prev) => {
+      const next = prev.indexOf(true);
+      if (next === -1) return prev;
+      return prev.map((value, i) => (i === next ? false : value));
+    });
+  }, []);
+
+  const micState = useBlowDetection(blowNext);
+
   return (
     <SceneShell>
       <div className="w-full max-w-md text-center">
