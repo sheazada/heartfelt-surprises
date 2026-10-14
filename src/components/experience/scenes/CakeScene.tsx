@@ -1,6 +1,78 @@
 import { motion, AnimatePresence } from "motion/react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SceneShell, SceneButton } from "../SceneShell";
+
+type MicState = "pending" | "active" | "denied";
+
+/** Listens for a blowing sound on the microphone and fires onBlow while it lasts. */
+function useBlowDetection(onBlow: () => void): MicState {
+  const [micState, setMicState] = useState<MicState>("pending");
+  const onBlowRef = useRef(onBlow);
+  onBlowRef.current = onBlow;
+
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setMicState("denied");
+      return;
+    }
+    let cancelled = false;
+    let stream: MediaStream | null = null;
+    let ctx: AudioContext | null = null;
+    let raf = 0;
+
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((s) => {
+        if (cancelled) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        ctx = new AudioContext();
+        const source = ctx.createMediaStreamSource(s);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        let blowStart = 0;
+        let lastBlow = 0;
+        const tick = (now: number) => {
+          analyser.getByteTimeDomainData(data);
+          let sum = 0;
+          for (let i = 0; i < data.length; i++) {
+            const v = ((data[i] ?? 128) - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / data.length);
+          if (rms > 0.16) {
+            if (!blowStart) blowStart = now;
+            // Sustained loud sound for ~250ms counts as a blow; throttle to one candle per 350ms.
+            if (now - blowStart > 250 && now - lastBlow > 350) {
+              lastBlow = now;
+              onBlowRef.current();
+            }
+          } else {
+            blowStart = 0;
+          }
+          raf = requestAnimationFrame(tick);
+        };
+        raf = requestAnimationFrame(tick);
+        setMicState("active");
+      })
+      .catch(() => {
+        if (!cancelled) setMicState("denied");
+      });
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+      stream?.getTracks().forEach((t) => t.stop());
+      void ctx?.close().catch(() => undefined);
+    };
+  }, []);
+
+  return micState;
+}
 
 function Candle({ lit, index, onBlow }: { lit: boolean; index: number; onBlow: () => void }) {
   return (
@@ -45,6 +117,17 @@ export function CakeScene({ name, onNext }: { name: string; onNext: () => void }
 
   const blow = (index: number) =>
     setLit((prev) => prev.map((value, i) => (i === index ? false : value)));
+
+  // Blow out the first still-lit candle (used by microphone detection).
+  const blowNext = useCallback(() => {
+    setLit((prev) => {
+      const next = prev.indexOf(true);
+      if (next === -1) return prev;
+      return prev.map((value, i) => (i === next ? false : value));
+    });
+  }, []);
+
+  const micState = useBlowDetection(blowNext);
 
   return (
     <SceneShell>
@@ -119,7 +202,11 @@ export function CakeScene({ name, onNext }: { name: string; onNext: () => void }
                 className="text-sm"
                 style={{ color: "color-mix(in oklab, var(--scene-fg) 65%, transparent)" }}
               >
-                No microphone needed — just tap each flame.
+                {micState === "active"
+                  ? "Blow into your microphone — or tap each flame."
+                  : micState === "pending"
+                    ? "Allow microphone access to blow out the candles — or tap each flame."
+                    : "Just tap each flame to blow it out."}
               </motion.p>
             )}
           </AnimatePresence>
