@@ -202,7 +202,11 @@ export function CakeScene({ name, onNext }: { name: string; onNext: () => void }
                 className="text-sm"
                 style={{ color: "color-mix(in oklab, var(--scene-fg) 65%, transparent)" }}
               >
-                No microphone needed — just tap each flame.
+                {micState === "active"
+                  ? "Blow into your microphone — or tap each flame."
+                  : micState === "pending"
+                    ? "Allow microphone access to blow out the candles — or tap each flame."
+                    : "Just tap each flame to blow it out."}
               </motion.p>
             )}
           </AnimatePresence>
