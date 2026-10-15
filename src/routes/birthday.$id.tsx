@@ -38,7 +38,7 @@ export const Route = createFileRoute("/birthday/$id")({
   notFoundComponent: () => (
     <Message title="This surprise couldn't be found" body="The link may be incomplete. Ask the person who sent it to share it again." />
   ),
-  errorComponent: ({ error }) => <Message title="This surprise didn't load" body={error.message || "Please check your connection and try again."} />,
+  errorComponent: ({ error }) => <Message title="This surprise didn't load" body={(error instanceof Error && error.message) || "Please check your connection and try again."} />,
   component: BirthdayPage,
 });
 
