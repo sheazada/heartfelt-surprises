@@ -137,7 +137,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      birthday_page_is_fresh: { Args: { _id: string }; Returns: boolean }
+      get_birthday_page: { Args: { _id: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never
