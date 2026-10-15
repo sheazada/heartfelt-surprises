@@ -16,32 +16,21 @@ function asTrack(value: string | null): TrackId {
   return (found?.id ?? "aurora") as TrackId;
 }
 
+type RpcPage = {
+  page: {
+    id: string; recipient_name: string; sender_name: string; birthday_date: string | null;
+    age: number | null; relationship: string | null; intro_message: string; letter: string;
+    theme: string | null; music_enabled: boolean; music_track: string | null;
+  };
+  reasons: { id: string; text: string }[];
+  photos: { id: string; public_url: string; caption: string | null; memory: string | null }[];
+};
+
 export async function fetchBirthday(id: string): Promise<ExperienceData | null> {
-  const { data: page, error } = await supabase
-    .from("birthday_pages")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
-
+  const { data, error } = await supabase.rpc("get_birthday_page", { _id: id });
   if (error) throw new Error(error.message);
-  if (!page) return null;
-
-  const [reasonsRes, photosRes] = await Promise.all([
-    supabase
-      .from("birthday_reasons")
-      .select("id, text, display_order")
-      .eq("birthday_page_id", id)
-      .order("display_order"),
-    supabase
-      .from("birthday_photos")
-      .select("id, public_url, storage_path, caption, memory, display_order")
-      .eq("birthday_page_id", id)
-      .order("display_order"),
-  ]);
-
-  if (reasonsRes.error) throw new Error(reasonsRes.error.message);
-  if (photosRes.error) throw new Error(photosRes.error.message);
-
+  if (!data) return null;
+  const { page, reasons, photos } = data as unknown as RpcPage;
   return {
     id: page.id,
     recipientName: page.recipient_name,
@@ -54,13 +43,8 @@ export async function fetchBirthday(id: string): Promise<ExperienceData | null> 
     theme: asTheme(page.theme),
     musicEnabled: page.music_enabled,
     musicTrack: asTrack(page.music_track),
-    reasons: (reasonsRes.data ?? []).map((r) => ({ id: r.id, text: r.text })),
-    photos: (photosRes.data ?? []).map((p) => ({
-      id: p.id,
-      url: p.public_url,
-      caption: p.caption,
-      memory: p.memory,
-    })),
+    reasons: reasons.map((r) => ({ id: r.id, text: r.text })),
+    photos: photos.map((p) => ({ id: p.id, url: p.public_url, caption: p.caption, memory: p.memory })),
   };
 }
 
@@ -72,9 +56,11 @@ export async function createBirthdayPage(
 ): Promise<string> {
   onProgress({ step: "Creating your birthday page…" });
 
-  const { data: page, error } = await supabase
+  const pageId = crypto.randomUUID();
+  const { error } = await supabase
     .from("birthday_pages")
     .insert({
+      id: pageId,
       recipient_name: draft.recipientName.trim(),
       sender_name: draft.senderName.trim(),
       birthday_date: draft.birthdayDate || null,
@@ -85,12 +71,9 @@ export async function createBirthdayPage(
       theme: draft.theme,
       music_enabled: draft.musicEnabled,
       music_track: draft.musicEnabled ? draft.musicTrack : null,
-    })
-    .select("id")
-    .single();
+    });
 
-  if (error || !page) throw new Error(error?.message ?? "Could not create the birthday page.");
-  const pageId = page.id;
+  if (error) throw new Error(error.message || "Could not create the birthday page.");
 
   const reasons = draft.reasons.filter((r) => r.text.trim());
   if (reasons.length) {
