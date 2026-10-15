@@ -12,6 +12,9 @@ export const TRACKS = [
   { id: "aurora", label: "Aurora", hint: "Slow warm pads" },
   { id: "musicbox", label: "Music Box", hint: "Gentle bell melody" },
   { id: "lantern", label: "Lantern", hint: "Sparse piano-like tones" },
+  { id: "birthday", label: "Happy Birthday", hint: "The classic tune, softly" },
+  { id: "sunrise", label: "Sunrise", hint: "Bright, cheerful arpeggios" },
+  { id: "starlight", label: "Starlight", hint: "Twinkling high chimes" },
 ] as const;
 
 export type TrackId = (typeof TRACKS)[number]["id"];

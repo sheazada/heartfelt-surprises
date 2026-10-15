@@ -13,19 +13,38 @@ const SCALES: Record<TrackId, number[]> = {
   aurora: [220, 261.63, 329.63, 392, 440],
   musicbox: [523.25, 587.33, 659.25, 783.99, 880, 1046.5],
   lantern: [174.61, 220, 261.63, 293.66, 349.23],
+  birthday: [261.63, 329.63, 392],
+  sunrise: [261.63, 329.63, 392, 523.25, 659.25],
+  starlight: [659.25, 783.99, 987.77, 1174.66, 1318.51],
+};
+
+/** Fixed melodies (0 = rest). "Happy Birthday to You" is public domain. */
+const G4 = 392, A4 = 440, B4 = 493.88, C5 = 523.25, D5 = 587.33, E5 = 659.25, F5 = 698.46, G5 = 783.99;
+const MELODIES: Partial<Record<TrackId, number[]>> = {
+  birthday: [G4, G4, A4, 0, G4, 0, C5, 0, B4, 0, 0, 0, G4, G4, A4, 0, G4, 0, D5, 0, C5, 0, 0, 0,
+    G4, G4, G5, 0, E5, 0, C5, 0, B4, 0, A4, 0, F5, F5, E5, 0, C5, 0, D5, 0, C5, 0, 0, 0, 0, 0, 0, 0],
+  sunrise: [C5, E5, G5, E5, D5, G4, B4, D5, A4, C5, E5, C5, F5, A4, C5, 0, G4, B4, D5, G5, E5, C5, G4, 0],
 };
 
 const TIMBRE: Record<TrackId, OscillatorType> = {
   aurora: "sine",
   musicbox: "triangle",
   lantern: "sine",
+  birthday: "triangle",
+  sunrise: "triangle",
+  starlight: "sine",
 };
 
 const INTERVAL_MS: Record<TrackId, number> = {
   aurora: 3800,
   musicbox: 1400,
   lantern: 2400,
+  birthday: 300,
+  sunrise: 260,
+  starlight: 900,
 };
+
+const VOLUME = 0.42;
 
 export function useAmbientMusic(track: TrackId, enabled: boolean) {
   const ctxRef = useRef<AudioContext | null>(null);
@@ -59,14 +78,18 @@ export function useAmbientMusic(track: TrackId, enabled: boolean) {
       const ctx: AudioContext = new AudioCtor();
       const master = ctx.createGain();
       master.gain.value = 0.0001;
-      master.connect(ctx.destination);
+      // Compressor keeps the louder mix from clipping on phone speakers.
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -14;
+      comp.ratio.value = 4;
+      master.connect(comp).connect(ctx.destination);
       ctxRef.current = ctx;
       masterRef.current = master;
     }
     const ctx = ctxRef.current!;
     const master = masterRef.current!;
     void ctx.resume();
-    master.gain.setTargetAtTime(muted ? 0 : 0.16, ctx.currentTime, 0.6);
+    master.gain.setTargetAtTime(muted ? 0 : VOLUME, ctx.currentTime, 0.6);
 
     if (timerRef.current) return; // already running
 
@@ -80,22 +103,31 @@ export function useAmbientMusic(track: TrackId, enabled: boolean) {
       osc.type = "sine";
       osc.frequency.value = freq / 2;
       gain.gain.value = 0;
-      gain.gain.setTargetAtTime(0.09 - i * 0.03, ctx.currentTime, 1.5);
+      gain.gain.setTargetAtTime((melody ? 0.07 : 0.14) - i * 0.03, ctx.currentTime, 1.5);
       osc.connect(gain).connect(master);
       osc.start();
       padRef.current.push({ osc, gain });
     });
 
+    const melody = MELODIES[track];
+    let stepIndex = 0;
     const pluck = () => {
       const now = ctx.currentTime;
-      const freq = scale[Math.floor(Math.random() * scale.length)]!;
+      let freq: number;
+      if (melody) {
+        freq = melody[stepIndex % melody.length]!;
+        stepIndex++;
+        if (!freq) return;
+      } else {
+        freq = scale[Math.floor(Math.random() * scale.length)]!;
+      }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = type;
       osc.frequency.value = freq;
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.22, now + 0.06);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.6);
+      gain.gain.exponentialRampToValueAtTime(melody ? 0.3 : 0.35, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + (melody ? 0.9 : 2.6));
       osc.connect(gain).connect(master);
       osc.start(now);
       osc.stop(now + 2.8);
@@ -118,7 +150,7 @@ export function useAmbientMusic(track: TrackId, enabled: boolean) {
       const next = !prev;
       const ctx = ctxRef.current;
       const master = masterRef.current;
-      if (ctx && master) master.gain.setTargetAtTime(next ? 0 : 0.16, ctx.currentTime, 0.2);
+      if (ctx && master) master.gain.setTargetAtTime(next ? 0 : VOLUME, ctx.currentTime, 0.2);
       return next;
     });
   }, []);
